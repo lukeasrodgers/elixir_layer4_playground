@@ -22,7 +22,7 @@ defmodule TcpEchoServer do
   def handle(accept_socket) do
     :inet.setopts(accept_socket, [{:active, :once}])
     receive do
-      {:tcp, accept_socket, <<"quit", _::binary>>} -> 
+      {:tcp, accept_socket, "quit\r\n"} -> 
         :gen_tcp.close(accept_socket)
       {:tcp, accept_socket, message} ->
         :gen_tcp.send(accept_socket, message)
