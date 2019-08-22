@@ -1,16 +1,12 @@
 defmodule TcpEchoServer do
 
   def start_server(port) do
-    Process.flag(:trap_exit, true)
     IO.puts("starting server")
     IO.inspect(self())
-
-    # spawn_link(fn -> sighandler() end)
 
     case :gen_tcp.listen(port, [:binary, {:active, false}]) do
       {:ok, listen_socket} -> 
         spawn_link(fn -> acceptor(listen_socket) end)
-        sighandler()
         Process.sleep(:infinity)
       {:error, :eaddrinuse} ->
         IO.puts "address in use"
@@ -20,8 +16,13 @@ defmodule TcpEchoServer do
   def acceptor(listen_socket) do
     IO.puts("starting acceptor")
     IO.inspect(self())
-    # this will block, I think?
+
+    # this will block, waiting for a connection
     {:ok, accept_socket} = :gen_tcp.accept(listen_socket)
+
+    # spawn a signal handler process which will get exit signals from this process, and trap them
+    spawn_link(fn -> sighandler() end)
+
     # spawn same func to wait for other clients
     spawn_link(fn -> acceptor(listen_socket) end)
 
@@ -30,6 +31,7 @@ defmodule TcpEchoServer do
 
   def sighandler do
     IO.puts "sighandler"
+    Process.flag(:trap_exit, true)
     receive do
       {:EXIT, from, reason} ->
         IO.puts("exit")
@@ -42,6 +44,7 @@ defmodule TcpEchoServer do
   end
 
   def handle(accept_socket) do
+    IO.puts "handle"
     :inet.setopts(accept_socket, [{:active, :once}])
     receive do
       {:tcp, accept_socket, "quit\r\n"} -> 
