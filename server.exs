@@ -4,6 +4,7 @@ defmodule TcpEchoServer do
     IO.puts("starting server")
     IO.inspect(self())
 
+    # start off with socket in passive mode, requires explicit recv to retrieve packets
     case :gen_tcp.listen(port, [:binary, {:active, false}]) do
       {:ok, listen_socket} -> 
         spawn_link(fn -> acceptor(listen_socket) end)
@@ -45,8 +46,10 @@ defmodule TcpEchoServer do
 
   def handle(accept_socket) do
     IO.puts "handle"
+    # now enable "active" mode, but just for one packet, after which loop back to this function
     :inet.setopts(accept_socket, [{:active, :once}])
     receive do
+      # assumes client is telnet-ish, sending \r\n for newlines
       {:tcp, accept_socket, "quit\r\n"} -> 
         :gen_tcp.close(accept_socket)
       {:tcp, accept_socket, message} ->
